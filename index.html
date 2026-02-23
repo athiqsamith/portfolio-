@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -24,256 +25,272 @@
   --trunk:   #b0b0c8;
 }
 
-html, body { width:100%; height:100%; background:var(--bg); color:var(--text);
-  font-family:'Syne',sans-serif; overflow:hidden; }
-
-#vp {
-  position:fixed; inset:0; overflow:hidden; cursor:grab;
-  user-select:none;
+html, body {
+  width: 100%; height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  overflow: hidden;
 }
-#vp.drag { cursor:grabbing; }
+
+/* dot grid */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 0;
+  background-image: radial-gradient(circle, rgba(255,255,255,.04) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+/* ── scrollable viewport, no drag, no free zoom ── */
+#vp {
+  position: fixed; inset: 0; z-index: 1;
+  overflow-y: auto; overflow-x: hidden;
+  scrollbar-width: none;
+}
+#vp::-webkit-scrollbar { display: none; }
 
 #world {
-  position:absolute; top:0; left:0;
-  width:1400px; height:1000px;
-  transform-origin:0 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100%;
+  padding: 60px 20px 100px;
+  /* zoom states */
+  transition: transform .6s cubic-bezier(.16,1,.3,1);
 }
+#world.zoom-overview { transform: scale(1); transform-origin: center top; }
+#world.zoom-focus    { transform: scale(1.15); transform-origin: center top; }
 
-#svg-bg {
-  position:absolute; top:0; left:0;
-  width:1400px; height:1000px;
-  pointer-events:none;
-  overflow:visible;
+/* ── legend top-right ── */
+#leg {
+  position: fixed; top: 24px; right: 24px;
+  z-index: 200;
+  display: flex; flex-direction: column; gap: 8px; align-items: flex-end;
+}
+.li {
+  display: flex; align-items: center; gap: 8px;
+  font-family: 'Syne Mono', monospace;
+  font-size: 9px; letter-spacing: .13em; text-transform: uppercase;
+  color: var(--muted); cursor: pointer; opacity: .5;
+  transition: opacity .2s, color .2s;
+}
+.li:hover, .li.on { opacity: 1; }
+.li-bar { width: 18px; height: 2px; border-radius: 1px; flex-shrink: 0; }
+
+/* status key bottom-right */
+#sk {
+  position: fixed; bottom: 28px; right: 28px;
+  z-index: 200;
+  display: flex; flex-direction: column; gap: 6px; align-items: flex-end;
+}
+.ski {
+  display: flex; align-items: center; gap: 7px;
+  font-family: 'Syne Mono', monospace;
+  font-size: 9px; letter-spacing: .08em; color: #44445a;
 }
 
 /* ── Trunk nodes ── */
 .tn {
-  position:absolute;
-  display:flex; flex-direction:column; align-items:center;
-  cursor:pointer;
-  transform:translate(-50%,-50%);
+  position: absolute;
+  display: flex; flex-direction: row; align-items: center;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
 }
 .tn-ring {
-  position:absolute; top:0; left:50%;
-  width:26px; height:26px; border-radius:50%;
-  border:1px solid #1e1e2c;
-  transform:translate(-50%,-50%);
-  pointer-events:none;
-  transition:border-color .25s, width .25s, height .25s;
+  position: absolute;
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 1px solid #1e1e2c;
+  transform: translate(-50%, -50%);
+  left: 7px; top: 7px;
+  pointer-events: none;
+  transition: border-color .25s;
 }
-.tn:hover .tn-ring       { border-color:#3a3a52; width:30px; height:30px; }
-.tn.open  .tn-ring       { border-color:var(--trunk); }
+.tn:hover .tn-ring { border-color: #3a3a52; }
+.tn.open .tn-ring  { border-color: var(--trunk); }
 .tn-dot {
-  width:14px; height:14px; border-radius:50%;
-  background:var(--trunk);
-  border:2.5px solid var(--bg);
-  flex-shrink:0; position:relative; z-index:2;
-  transition:transform .2s, box-shadow .2s;
-  margin-top:0;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--trunk);
+  border: 2.5px solid var(--bg);
+  flex-shrink: 0; position: relative; z-index: 2;
+  transition: transform .2s, box-shadow .2s;
 }
-.tn:hover .tn-dot { transform:scale(1.35); box-shadow:0 0 14px rgba(176,176,200,.4); }
-.tn.open  .tn-dot { background:var(--bg); }
+.tn:hover .tn-dot { transform: scale(1.35); box-shadow: 0 0 14px rgba(176,176,200,.45); }
+.tn.open .tn-dot  { background: var(--bg); }
+.tn-info { margin-left: 18px; }
 .tn-lbl {
-  font-family:'Syne Mono',monospace; font-size:9px;
-  letter-spacing:.14em; text-transform:uppercase;
-  color:var(--muted); margin-top:9px; white-space:nowrap;
-  transition:color .2s;
+  font-family: 'Syne Mono', monospace; font-size: 9px;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: #7070a0; white-space: nowrap;
+  transition: color .2s;
 }
-.tn:hover .tn-lbl { color:var(--text); }
+.tn:hover .tn-lbl { color: #dcdce8; }
 .tn-yr {
-  font-family:'Syne Mono',monospace; font-size:8px;
-  color:#202030; margin-top:3px; letter-spacing:.08em;
+  font-family: 'Syne Mono', monospace; font-size: 8px;
+  color: #383850; margin-top: 3px; letter-spacing: .08em;
 }
 
 /* ── Branch nodes ── */
 .bn {
-  position:absolute;
-  display:flex; flex-direction:column; align-items:center;
-  cursor:pointer;
-  transform:translate(-50%,-50%) scale(0.3);
-  opacity:0; pointer-events:none;
-  transition:opacity .4s cubic-bezier(.34,1.5,.64,1),
-             transform .4s cubic-bezier(.34,1.5,.64,1);
+  position: absolute;
+  display: flex; flex-direction: column; align-items: center;
+  cursor: pointer;
+  transform: translate(-50%, -50%) scale(.3);
+  opacity: 0; pointer-events: none;
+  transition: opacity .4s cubic-bezier(.34,1.5,.64,1),
+              transform .4s cubic-bezier(.34,1.5,.64,1);
 }
-.bn.vis { opacity:1; pointer-events:all; transform:translate(-50%,-50%) scale(1); }
-
+.bn.vis {
+  opacity: 1; pointer-events: all;
+  transform: translate(-50%, -50%) scale(1);
+}
 .bn-dot {
-  width:10px; height:10px; border-radius:50%;
-  flex-shrink:0; position:relative; z-index:2;
-  transition:transform .2s;
+  width: 12px; height: 12px; border-radius: 50%;
+  flex-shrink: 0; position: relative; z-index: 2;
+  transition: transform .2s, box-shadow .2s;
 }
-.bn:hover .bn-dot { transform:scale(1.6); }
+.bn:hover .bn-dot { transform: scale(1.55); }
+.bn:hover .bn-dot { box-shadow: 0 0 12px currentColor; }
 
 .bn-lbl {
-  font-family:'Syne',sans-serif; font-size:10px;
-  color:#484862; white-space:pre; text-align:center;
-  margin-top:6px; line-height:1.35;
-  transition:color .2s; max-width:110px;
+  font-family: 'Syne', sans-serif; font-size: 10px;
+  color: #8888a8; white-space: pre; text-align: center;
+  margin-top: 6px; line-height: 1.35;
+  transition: color .2s; max-width: 120px;
 }
-.bn:hover .bn-lbl { color:var(--text); }
+.bn:hover .bn-lbl { color: #e8e8f8; }
 
 @keyframes pr {
-  0%   { transform:translate(-50%,-50%) scale(1); opacity:.5; }
-  100% { transform:translate(-50%,-50%) scale(3.2); opacity:0; }
+  0%   { transform: translate(-50%,-50%) scale(1); opacity: .5; }
+  100% { transform: translate(-50%,-50%) scale(3.2); opacity: 0; }
 }
 .pulse {
-  position:absolute; top:50%; left:50%;
-  width:10px; height:10px; border-radius:50%;
-  border:1px solid currentColor;
-  animation:pr 2.4s ease-out infinite;
-  pointer-events:none;
+  position: absolute; top: 50%; left: 50%;
+  width: 12px; height: 12px; border-radius: 50%;
+  border: 1px solid currentColor;
+  animation: pr 2.4s ease-out infinite;
+  pointer-events: none;
 }
 
-/* ── Header ── */
-#hdr {
-  position:fixed; top:0; left:0; right:0; z-index:200;
-  padding:24px 32px; pointer-events:none;
-  background:linear-gradient(to bottom,#050507 55%,transparent);
+/* ── Legend bottom-left ── */
+#leg-bl {
+  position: fixed; bottom: 28px; left: 28px;
+  z-index: 200;
+  display: flex; flex-direction: column; gap: 9px;
 }
-#hdr h1 { font-weight:300; font-size:11px; letter-spacing:.32em;
-  text-transform:uppercase; color:#1e1e2c; }
-#hdr p  { font-family:'Syne Mono',monospace; font-size:9px;
-  color:#161620; letter-spacing:.18em; margin-top:4px; }
-
-/* ── Legend ── */
-#leg {
-  position:fixed; bottom:30px; left:30px; z-index:200;
-  display:flex; flex-direction:column; gap:9px;
+.li-bl {
+  display: flex; align-items: center; gap: 9px;
+  font-family: 'Syne Mono', monospace; font-size: 9px;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted); cursor: pointer; opacity: .5;
+  transition: opacity .2s, color .2s;
 }
-.li {
-  display:flex; align-items:center; gap:9px;
-  font-family:'Syne Mono',monospace; font-size:9px;
-  letter-spacing:.1em; text-transform:uppercase;
-  color:var(--muted); cursor:pointer; opacity:.5;
-  transition:opacity .2s, color .2s;
-}
-.li:hover,.li.on { opacity:1; }
-.li-bar { width:18px; height:2px; border-radius:1px; flex-shrink:0; }
-
-/* ── Status ── */
-#sk {
-  position:fixed; bottom:30px; right:30px; z-index:200;
-  display:flex; flex-direction:column; gap:7px; align-items:flex-end;
-}
-.ski {
-  display:flex; align-items:center; gap:7px;
-  font-family:'Syne Mono',monospace; font-size:9px;
-  letter-spacing:.08em; color:#1e1e2c;
-}
-
-/* ── Zoom ── */
-#zc {
-  position:fixed; right:30px; top:50%; transform:translateY(-50%);
-  z-index:200; display:flex; flex-direction:column; gap:4px;
-}
-.zb {
-  width:30px; height:30px; background:var(--surface);
-  border:1px solid var(--border); color:var(--muted);
-  cursor:pointer; font-family:'Syne Mono',monospace; font-size:13px;
-  display:flex; align-items:center; justify-content:center;
-  border-radius:2px; transition:all .15s;
-}
-.zb:hover { border-color:var(--border2); color:var(--text); }
+.li-bl:hover, .li-bl.on { opacity: 1; }
+.li-bl-bar { width: 18px; height: 2px; border-radius: 1px; flex-shrink: 0; }
 
 /* ── Panel ── */
 #panel {
-  position:fixed; top:0; right:0; bottom:0; width:350px;
-  background:var(--surface); border-left:1px solid var(--border);
-  z-index:300; transform:translateX(100%);
-  transition:transform .45s cubic-bezier(.16,1,.3,1);
-  display:flex; flex-direction:column;
+  position: fixed; top: 0; right: 0; bottom: 0; width: 350px;
+  background: var(--surface); border-left: 1px solid var(--border);
+  z-index: 300; transform: translateX(100%);
+  transition: transform .45s cubic-bezier(.16,1,.3,1);
+  display: flex; flex-direction: column;
 }
-#panel.open { transform:translateX(0); }
-#pa  { height:2px; flex-shrink:0; }
-#ph  { padding:22px 22px 18px; border-bottom:1px solid var(--border); flex-shrink:0; }
-#ptag{ font-family:'Syne Mono',monospace; font-size:8px; letter-spacing:.22em;
-  text-transform:uppercase; display:flex; align-items:center; gap:7px;
-  color:var(--muted); margin-bottom:10px; }
-#ptbar { width:14px; height:1.5px; border-radius:1px; display:inline-block; }
-#ptitle{ font-weight:500; font-size:17px; line-height:1.25; margin-bottom:5px; }
-#pper  { font-family:'Syne Mono',monospace; font-size:9px; color:var(--muted); }
-#pbadge{
-  display:inline-flex; align-items:center; gap:6px;
-  font-family:'Syne Mono',monospace; font-size:8px;
-  letter-spacing:.14em; text-transform:uppercase;
-  margin-top:11px; padding:4px 10px;
-  border:1px solid var(--border); border-radius:20px; color:var(--muted);
+#panel.open { transform: translateX(0); }
+#pa  { height: 2px; flex-shrink: 0; }
+#ph  { padding: 22px 22px 18px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+#ptag {
+  font-family: 'Syne Mono', monospace; font-size: 8px;
+  letter-spacing: .22em; text-transform: uppercase;
+  display: flex; align-items: center; gap: 7px;
+  color: var(--muted); margin-bottom: 10px;
 }
-#pbdot { width:5px; height:5px; border-radius:50%; }
-#pb { padding:22px; overflow-y:auto; flex:1;
-  scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
-.ps { margin-bottom:26px; }
+#ptbar { width: 14px; height: 1.5px; border-radius: 1px; display: inline-block; }
+#ptitle { font-weight: 500; font-size: 17px; line-height: 1.25; margin-bottom: 5px; }
+#pper  { font-family: 'Syne Mono', monospace; font-size: 9px; color: var(--muted); }
+#pbadge {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: 'Syne Mono', monospace; font-size: 8px;
+  letter-spacing: .14em; text-transform: uppercase;
+  margin-top: 11px; padding: 4px 10px;
+  border: 1px solid var(--border); border-radius: 20px; color: var(--muted);
+}
+#pbdot { width: 5px; height: 5px; border-radius: 50%; }
+#pb {
+  padding: 22px; overflow-y: auto; flex: 1;
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+}
+.ps { margin-bottom: 26px; }
 .psl {
-  font-family:'Syne Mono',monospace; font-size:8px;
-  letter-spacing:.18em; text-transform:uppercase;
-  color:#1e1e2c; margin-bottom:10px;
-  display:flex; align-items:center; gap:8px;
+  font-family: 'Syne Mono', monospace; font-size: 8px;
+  letter-spacing: .18em; text-transform: uppercase;
+  color: #1e1e2c; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 8px;
 }
-.psl::after { content:''; flex:1; height:1px; background:var(--border); }
-.ps p { font-size:12px; line-height:1.85; color:#585870; }
+.psl::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.ps p { font-size: 12px; line-height: 1.85; color: #585870; }
 .li2 {
-  font-family:'Syne Mono',monospace; font-size:10px;
-  color:#484860; padding:6px 0; border-bottom:1px solid var(--border);
-  line-height:1.6; display:flex; gap:7px; align-items:flex-start;
+  font-family: 'Syne Mono', monospace; font-size: 10px;
+  color: #484860; padding: 6px 0; border-bottom: 1px solid var(--border);
+  line-height: 1.6; display: flex; gap: 7px; align-items: flex-start;
 }
-.li2::before { content:'->'; color:#222230; flex-shrink:0; }
-.cw { display:flex; flex-wrap:wrap; gap:6px; }
+.li2::before { content: '->'; color: #222230; flex-shrink: 0; }
+.cw { display: flex; flex-wrap: wrap; gap: 6px; }
 .cc {
-  font-family:'Syne Mono',monospace; font-size:8px; letter-spacing:.08em;
-  padding:4px 9px; border-radius:2px;
-  border:1px solid var(--border); color:var(--muted);
-  cursor:pointer; transition:all .15s;
+  font-family: 'Syne Mono', monospace; font-size: 8px; letter-spacing: .08em;
+  padding: 4px 9px; border-radius: 2px;
+  border: 1px solid var(--border); color: var(--muted);
+  cursor: pointer; transition: all .15s;
 }
-.cc:hover { color:var(--text); border-color:var(--border2); }
+.cc:hover { color: var(--text); border-color: var(--border2); }
 #pcls {
-  position:absolute; top:16px; right:16px;
-  width:26px; height:26px; background:var(--border); border:none;
-  border-radius:2px; color:var(--muted); cursor:pointer; font-size:12px;
-  display:flex; align-items:center; justify-content:center;
-  font-family:'Syne Mono',monospace; transition:all .15s;
+  position: absolute; top: 16px; right: 16px;
+  width: 26px; height: 26px; background: var(--border); border: none;
+  border-radius: 2px; color: var(--muted); cursor: pointer; font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Syne Mono', monospace; transition: all .15s;
 }
-#pcls:hover { background:var(--border2); color:var(--text); }
+#pcls:hover { background: var(--border2); color: var(--text); }
 
-/* ── Hint ── */
+/* hint */
 #hint {
-  position:fixed; bottom:30px; left:50%; transform:translateX(-50%);
-  font-family:'Syne Mono',monospace; font-size:9px;
-  letter-spacing:.18em; text-transform:uppercase; color:#181825;
-  pointer-events:none; z-index:200; transition:opacity 1.5s;
-  white-space:nowrap;
+  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+  font-family: 'Syne Mono', monospace; font-size: 9px;
+  letter-spacing: .18em; text-transform: uppercase; color: #383850;
+  pointer-events: none; z-index: 200; transition: opacity 1.5s;
+  white-space: nowrap;
 }
-#hint.gone { opacity:0; }
+#hint.gone { opacity: 0; }
+
+/* grain */
+#grain {
+  position: fixed; inset: 0; pointer-events: none; z-index: 1000; opacity: .025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+}
 </style>
 </head>
 <body>
+<div id="grain"></div>
 
-<div id="hdr">
-  <h1>Living Archive</h1>
-  <p>One life &middot; many branches</p>
+<!-- Legend bottom-left -->
+<div id="leg-bl">
+  <div class="li-bl on" data-d="film"    onclick="doFilter('film',this)">    <div class="li-bl-bar" style="background:var(--film)"></div>Film</div>
+  <div class="li-bl on" data-d="art"     onclick="doFilter('art',this)">     <div class="li-bl-bar" style="background:var(--art)"></div>Public Art</div>
+  <div class="li-bl on" data-d="craft"   onclick="doFilter('craft',this)">   <div class="li-bl-bar" style="background:var(--craft)"></div>Craft &amp; Material</div>
+  <div class="li-bl on" data-d="systems" onclick="doFilter('systems',this)"> <div class="li-bl-bar" style="background:var(--systems)"></div>Systems</div>
+  <div class="li-bl on" data-d="music"   onclick="doFilter('music',this)">   <div class="li-bl-bar" style="background:var(--music)"></div>Experimental</div>
 </div>
 
-<div id="leg">
-  <div class="li on" data-d="film"    onclick="doFilter('film',this)">   <div class="li-bar" style="background:var(--film)"></div>Film</div>
-  <div class="li on" data-d="art"     onclick="doFilter('art',this)">    <div class="li-bar" style="background:var(--art)"></div>Public Art</div>
-  <div class="li on" data-d="craft"   onclick="doFilter('craft',this)">  <div class="li-bar" style="background:var(--craft)"></div>Craft &amp; Material</div>
-  <div class="li on" data-d="systems" onclick="doFilter('systems',this)"><div class="li-bar" style="background:var(--systems)"></div>Systems</div>
-  <div class="li on" data-d="music"   onclick="doFilter('music',this)">  <div class="li-bar" style="background:var(--music)"></div>Experimental</div>
-</div>
-
+<!-- Status key bottom-right -->
 <div id="sk">
   <div class="ski"><span>Upcoming</span>    <div style="width:8px;height:8px;border-radius:50%;border:2px dashed #2a2a3a"></div></div>
   <div class="ski"><span>In Progress</span> <div style="width:8px;height:8px;border-radius:50%;border:2px solid #464656"></div></div>
   <div class="ski"><span>Completed</span>   <div style="width:8px;height:8px;border-radius:50%;background:#44445a"></div></div>
 </div>
 
-<div id="zc">
-  <div class="zb" onclick="doZoom(1.2)">+</div>
-  <div class="zb" onclick="doZoom(0.83)">-</div>
-  <div class="zb" onclick="resetVP()" style="font-size:10px">o</div>
-</div>
-
 <div id="vp">
-  <div id="world">
+  <div id="world" class="zoom-overview">
     <svg id="svg-bg"></svg>
   </div>
 </div>
@@ -298,7 +315,7 @@ html, body { width:100%; height:100%; background:var(--bg); color:var(--text);
 
 <script>
 // ============================================================
-// DATA
+// DATA  (same as metro-v2.html — unchanged)
 // ============================================================
 const C = {
   film:'#f0c060', art:'#e86060', craft:'#60a8e8',
@@ -309,114 +326,101 @@ const LNAMES = {
   systems:'Systems', music:'Experimental', trunk:'Trunk'
 };
 const SC = { completed:'#44445a', 'in-progress':'#f0c060', upcoming:'#252535' };
-const TY = 400; // trunk Y position
 
 const TRUNK = [
-  { id:'T1', label:'Origins',      year:'2012', x:160,
+  { id:'T1', label:'Origins',      year:'2012',
     desc:'The beginning. Making things with hands, camera, and curiosity.',
-    learned:['Curiosity as engine','Beginner\'s mind'], related:[],
-    branch:{ disc:'craft', dir:'down', stations:[
-      { id:'Bc1', label:'Woodworking',        status:'completed',    ox:0,    oy:110,  period:'2012-2014',
+    learned:["Curiosity as engine","Beginner's mind"], related:[],
+    branch:{ disc:'craft', dir:'left', stations:[
+      { id:'Bc1', label:'Woodworking',       status:'completed',   ox:-120, oy:-90,  period:'2012-2014',
         desc:'Built furniture by hand. Material resistance as teacher.',
         learned:['Grain and structure','Hand tool mastery','Patience through resistance'], related:['Bc2','T1'] },
-      { id:'Bc2', label:'Textile\n& Weaving', status:'completed',    ox:100,  oy:190,  period:'2015-2016',
+      { id:'Bc2', label:'Textile\n& Weaving',status:'completed',   ox:-220, oy:-170, period:'2015-2016',
         desc:'Six months in a weaving studio. Rhythm as meditative practice.',
         learned:['Pattern logic','Tactile intelligence','Repetition as composition'], related:['Bc1','Bc3'] },
-      { id:'Bc3', label:'Ceramics',           status:'completed',    ox:-10,  oy:275,  period:'2017-2019',
+      { id:'Bc3', label:'Ceramics',          status:'completed',   ox:-130, oy:-260, period:'2017-2019',
         desc:'Clay as thinking medium. Embracing imperfection.',
         learned:['Mass vs void','Glaze chemistry','Process over outcome'], related:['Bc2','Bc4'] },
-      { id:'Bc4', label:'Material\nResearch', status:'in-progress',  ox:-110, oy:200,  period:'2022-Now',
+      { id:'Bc4', label:'Material\nResearch',status:'in-progress', ox:-260, oy:-200, period:'2022-Now',
         desc:'Bio-materials and sustainable fabrication. Where craft meets futures.',
         learned:['Mycelium composites','Speculative design'], related:['Bc3'] },
     ]}
   },
-  { id:'T2', label:'First Camera', year:'2014', x:340,
+  { id:'T2', label:'First Camera', year:'2014',
     desc:'Borrowed a DSLR. Shot everything. Learned how light behaves.',
     learned:['Exposure triangle','Watching before shooting','Light as material'], related:['T3'],
-    branch:{ disc:'film', dir:'up', stations:[
-      { id:'Bf1', label:'Short Films',           status:'completed',    ox:0,    oy:-105, period:'2014-2016',
+    branch:{ disc:'film', dir:'right', stations:[
+      { id:'Bf1', label:'Short Films',          status:'completed',   ox:120,  oy:-90,  period:'2014-2016',
         desc:'Three short films. Story is infrastructure.',
         learned:['Screenwriting basics','Directing non-actors','Post-production flow'], related:['Bf2','T2'] },
-      { id:'Bf2', label:'Documentary',           status:'completed',    ox:110,  oy:-185, period:'2017-2019',
+      { id:'Bf2', label:'Documentary',          status:'completed',   ox:230,  oy:-170, period:'2017-2019',
         desc:'Shifted to non-fiction. Months in archives and in the field.',
         learned:['Ethics of representation','Interview technique','Archival research'], related:['Bf1','Bf3'] },
-      { id:'Bf3', label:'Collaborative\nCinema', status:'in-progress',  ox:10,   oy:-275, period:'2022-Now',
+      { id:'Bf3', label:'Collaborative\nCinema',status:'in-progress', ox:120,  oy:-270, period:'2022-Now',
         desc:'Co-creating visual narratives with communities.',
         learned:['Collective authorship','Trust building'], related:['Bf2','Bf4'] },
-      { id:'Bf4', label:'Feature\nDev',          status:'upcoming',     ox:-100, oy:-205, period:'2025-',
+      { id:'Bf4', label:'Feature\nDev',         status:'upcoming',    ox:260,  oy:-210, period:'2025-',
         desc:'Developing first feature-length hybrid documentary/fiction project.',
         learned:[], related:['Bf3'] },
     ]}
   },
-  { id:'T3', label:'Public Space', year:'2016', x:540,
+  { id:'T3', label:'Public Space', year:'2016',
     desc:'First work in public. A wall, a community, six weeks of negotiation.',
     learned:['Scale and perception','Art in contested spaces'], related:['T2','T4'],
-    branch:{ disc:'art', dir:'down', stations:[
-      { id:'Ba1', label:'Street Murals',           status:'completed',    ox:-90,  oy:105,  period:'2016-2017',
+    branch:{ disc:'art', dir:'left', stations:[
+      { id:'Ba1', label:'Street Murals',           status:'completed',   ox:-110, oy:-90,  period:'2016-2017',
         desc:'First public intervention. Community centre wall.',
         learned:['Community negotiation','Durability of materials','Scale as argument'], related:['Ba2','T3'] },
-      { id:'Ba2', label:'Festival\nDesign',        status:'completed',    ox:70,   oy:180,  period:'2018-2020',
+      { id:'Ba2', label:'Festival\nDesign',        status:'completed',   ox:-220, oy:-170, period:'2018-2020',
         desc:'Spatial experiences for cultural festivals. Temporary architecture.',
         learned:['Crowd psychology','Modular systems','Temporal design'], related:['Ba1','Ba3'] },
-      { id:'Ba3', label:'Permanent\nInstall',      status:'in-progress',  ox:-15,  oy:270,  period:'2023-Now',
+      { id:'Ba3', label:'Permanent\nInstall',      status:'in-progress', ox:-120, oy:-265, period:'2023-Now',
         desc:'First permanent public commission. City-scale work with residents.',
         learned:['Institutional navigation','Longevity of material'], related:['Ba2','Ba4'] },
-      { id:'Ba4', label:'International\nResidency',status:'upcoming',     ox:115,  oy:275,  period:'2025-',
+      { id:'Ba4', label:'International\nResidency',status:'upcoming',    ox:-255, oy:-210, period:'2025-',
         desc:'Residency in unfamiliar city. Site-specific work.',
         learned:[], related:['Ba3'] },
     ]}
   },
-  { id:'T4', label:'First Studio', year:'2018', x:740,
+  { id:'T4', label:'First Studio', year:'2018',
     desc:'Started a studio. Creativity without infrastructure collapses.',
     learned:['Pricing work','Client communication','Legal basics'], related:['T3','T5'],
-    branch:{ disc:'systems', dir:'up', stations:[
-      { id:'Bs1', label:'Studio\nOps',          status:'completed',    ox:0,    oy:-110, period:'2018-2020',
+    branch:{ disc:'systems', dir:'right', stations:[
+      { id:'Bs1', label:'Studio\nOps',          status:'completed',   ox:120,  oy:-90,  period:'2018-2020',
         desc:'Built the studio from scratch. Operating creatively and commercially.',
         learned:['Estimating projects','Contracts','Cashflow management'], related:['Bs2','T4'] },
-      { id:'Bs2', label:'Collaborator\nNetwork',status:'completed',    ox:110,  oy:-195, period:'2019-2021',
+      { id:'Bs2', label:'Collaborator\nNetwork', status:'completed',   ox:235,  oy:-175, period:'2019-2021',
         desc:'Loose network of collaborators operating without fixed team.',
         learned:['Trust networks','Async collaboration','Project scoping'], related:['Bs1','Bs3'] },
-      { id:'Bs3', label:'Sustainable\nPractice',status:'in-progress',  ox:5,    oy:-285, period:'2022-Now',
+      { id:'Bs3', label:'Sustainable\nPractice', status:'in-progress', ox:120,  oy:-270, period:'2022-Now',
         desc:'Redesigning how the practice generates income without compromising work.',
         learned:['Grants & funding','Licensing creative work','Saying no'], related:['Bs2','Bs4'] },
-      { id:'Bs4', label:'Teaching &\nMentoring',status:'upcoming',     ox:-105, oy:-215, period:'2025-',
+      { id:'Bs4', label:'Teaching &\nMentoring', status:'upcoming',    ox:265,  oy:-215, period:'2025-',
         desc:'Formalizing knowledge sharing. Workshops and curriculum.',
         learned:[], related:['Bs3'] },
     ]}
   },
-  { id:'T5', label:'Sound Work',   year:'2020', x:940,
+  { id:'T5', label:'Sound Work',   year:'2020',
     desc:'Picked up a field recorder. Sound as archive and material.',
     learned:['Listening as practice','Ambience as composition'], related:['T4'],
-    branch:{ disc:'music', dir:'down', stations:[
-      { id:'Bm1', label:'Field\nRecording',      status:'completed',    ox:-80,  oy:105,  period:'2020-2021',
+    branch:{ disc:'music', dir:'left', stations:[
+      { id:'Bm1', label:'Field\nRecording',    status:'completed',   ox:-110, oy:-90,  period:'2020-2021',
         desc:'Carried a recorder everywhere. The world as score.',
         learned:['Spatial acoustics','Deep listening','Sound as archive'], related:['Bm2','T5'] },
-      { id:'Bm2', label:'Generative\nScores',    status:'completed',    ox:75,   oy:180,  period:'2021-2022',
+      { id:'Bm2', label:'Generative\nScores',  status:'completed',   ox:-225, oy:-170, period:'2021-2022',
         desc:'Field recordings as input to generative systems.',
         learned:['Max/MSP basics','Algorithmic composition','Live setups'], related:['Bm1','Bm3'] },
-      { id:'Bm3', label:'Sound\nfor Film',       status:'in-progress',  ox:-5,   oy:270,  period:'2023-Now',
+      { id:'Bm3', label:'Sound\nfor Film',     status:'in-progress', ox:-120, oy:-265, period:'2023-Now',
         desc:'Composing and designing sound for film and installation.',
         learned:['DAW deep work','Emotional scoring'], related:['Bm2','Bm4'] },
-      { id:'Bm4', label:'Live A/V\nPerformance', status:'upcoming',     ox:130,  oy:280,  period:'2025-',
+      { id:'Bm4', label:'Live A/V\nPerformance',status:'upcoming',   ox:-260, oy:-215, period:'2025-',
         desc:'Live format merging field recordings, visuals, and improvisation.',
         learned:[], related:['Bm3'] },
     ]}
   },
 ];
 
-// Compute absolute positions
-TRUNK.forEach(t => {
-  t.ax = t.x;
-  t.ay = TY;
-  if (t.branch) {
-    t.branch.stations.forEach(s => {
-      s.ax = t.ax + s.ox;
-      s.ay = t.ay + s.oy;
-    });
-  }
-});
-
-// Flat lookup
+// flat lookup
 const NM = {};
 TRUNK.forEach(t => {
   NM[t.id] = t;
@@ -424,152 +428,256 @@ TRUNK.forEach(t => {
 });
 
 // ============================================================
-// SVG
+// LAYOUT  — vertical spine
+// ============================================================
+const NS     = 'http://www.w3.org/2000/svg';
+const CX     = 340;   // spine x in SVG space
+const STEP   = 160;   // vertical gap between trunk stations
+const PAD_T  = 80;
+const SVG_W  = 760;
+
+// Compute absolute positions
+TRUNK.forEach((t, i) => {
+  t.ax = CX;
+  t.ay = PAD_T + i * STEP;
+});
+TRUNK.forEach(t => {
+  if (!t.branch) return;
+  t.branch.stations.forEach(s => {
+    s.ax = t.ax + s.ox;
+    s.ay = t.ay + s.oy;
+  });
+});
+
+const LAST_Y   = TRUNK[TRUNK.length - 1].ay;
+// find topmost branch node
+let topMost = PAD_T;
+TRUNK.forEach(t => { if (t.branch) t.branch.stations.forEach(s => { if (s.ay < topMost) topMost = s.ay; }); });
+const EXTRA   = Math.max(0, 60 - topMost);
+const SVG_H   = LAST_Y + 100 + EXTRA;
+
+// shift everything down if needed
+if (EXTRA > 0) {
+  TRUNK.forEach(t => {
+    t.ay += EXTRA;
+    if (t.branch) t.branch.stations.forEach(s => { s.ay += EXTRA; });
+  });
+}
+
+// ============================================================
+// SVG SETUP
 // ============================================================
 const svg = document.getElementById('svg-bg');
-const NS  = 'http://www.w3.org/2000/svg';
+svg.setAttribute('width',  SVG_W);
+svg.setAttribute('height', SVG_H);
+svg.style.cssText = `width:min(96vw,${SVG_W}px);height:auto;display:block;overflow:visible;`;
 
-function svgEl(tag, attrs) {
+function mkSvg(tag, a) {
   const e = document.createElementNS(NS, tag);
-  for (const [k,v] of Object.entries(attrs)) e.setAttribute(k, v);
+  for (const [k,v] of Object.entries(a)) e.setAttribute(k, v);
   return e;
 }
 
-// Trunk line
-(function() {
-  const x0 = TRUNK[0].ax - 80;
-  const x1 = TRUNK[TRUNK.length-1].ax + 100;
-  svg.appendChild(svgEl('line', {
-    x1:x0, y1:TY, x2:x1, y2:TY,
-    stroke:'#b0b0c8', 'stroke-width':'1.8', 'stroke-opacity':'.28'
-  }));
-  for (let i=0; i<7; i++) {
-    svg.appendChild(svgEl('circle', {
-      cx: x1+16+i*13, cy:TY, r:'1.4',
-      fill:'#202030', opacity: String(0.85 - i*0.12)
-    }));
-  }
-})();
+// ── DEFS ──
+const defs = mkSvg('defs', {});
 
-// Branch SVG groups (hidden initially)
-const BG = {}; // trunk id -> svg group element
+// vertical gradient for spine
+const vg = mkSvg('linearGradient', {id:'vg', x1:'0%', y1:'0%', x2:'0%', y2:'100%'});
+[
+  {o:'0%',   c:'#050507', a:0},
+  {o:'4%',   c:'#6060a0', a:1},
+  {o:'30%',  c:'#e0e0ff', a:1},
+  {o:'72%',  c:'#c0c0e0', a:1},
+  {o:'96%',  c:'#6060a0', a:1},
+  {o:'100%', c:'#050507', a:0},
+].forEach(s => {
+  vg.appendChild(mkSvg('stop', {offset:s.o,'stop-color':s.c,'stop-opacity':s.a}));
+});
+defs.appendChild(vg);
+
+// glow filter for spine
+const fSp = mkSvg('filter', {id:'fspine', x:'-500%', y:'-1%', width:'1100%', height:'102%'});
+fSp.appendChild(mkSvg('feGaussianBlur', {stdDeviation:'7', in:'SourceGraphic', result:'b'}));
+const fm1 = mkSvg('feMerge', {});
+fm1.appendChild(mkSvg('feMergeNode', {in:'b'}));
+fm1.appendChild(mkSvg('feMergeNode', {in:'SourceGraphic'}));
+fSp.appendChild(fm1);
+defs.appendChild(fSp);
+
+// node hover glow filter
+const fNd = mkSvg('filter', {id:'fnode', x:'-100%', y:'-100%', width:'300%', height:'300%'});
+fNd.appendChild(mkSvg('feGaussianBlur', {stdDeviation:'3.5', in:'SourceGraphic'}));
+defs.appendChild(fNd);
+
+svg.appendChild(defs);
+
+// ── SPINE  (perfectly straight vertical line) ──
+// glow layer
+svg.appendChild(mkSvg('line', {
+  x1:CX, y1:0, x2:CX, y2:SVG_H,
+  stroke:'url(#vg)', 'stroke-width':'22',
+  filter:'url(#fspine)', opacity:'.18',
+  'stroke-linecap':'round'
+}));
+// crisp spine — 6px
+svg.appendChild(mkSvg('line', {
+  x1:CX, y1:0, x2:CX, y2:SVG_H,
+  stroke:'url(#vg)', 'stroke-width':'6',
+  'stroke-linecap':'round'
+}));
+
+// blinking bottom dot
+const bd = mkSvg('circle', {cx:CX, cy:SVG_H - 16, r:'5', fill:'#c0c0e8'});
+bd.appendChild(mkSvg('animate', {attributeName:'opacity', values:'1;0.05;1', dur:'2s', repeatCount:'indefinite'}));
+svg.appendChild(bd);
+
+// ── BRANCH SVG GROUPS  (start CLOSED, toggle on trunk click) ──
+const BG = {};
+const expanded = new Set();
+
 TRUNK.forEach(t => {
   if (!t.branch) return;
   const col = C[t.branch.disc];
-  const g = svgEl('g', { id:'bg-'+t.id });
+  const g   = mkSvg('g', {id:'bg-'+t.id});
   g.style.opacity = '0';
-  g.style.transition = 'opacity .4s';
+  g.style.transition = 'opacity .35s';
 
-  const sts = t.branch.stations;
-  sts.forEach((s, i) => {
-    const fx = i === 0 ? t.ax : sts[i-1].ax;
-    const fy = i === 0 ? t.ay : sts[i-1].ay;
-    const tx = s.ax, ty = s.ay;
-    const midY = fy + (ty - fy) * 0.55;
-    g.appendChild(svgEl('path', {
-      d: 'M'+fx+','+fy+' L'+fx+','+midY+' L'+tx+','+midY+' L'+tx+','+ty,
-      stroke:col, 'stroke-width':'1.5', fill:'none',
-      'stroke-linecap':'round', 'stroke-linejoin':'round', opacity:'.7'
+  t.branch.stations.forEach((s, i) => {
+    const fromX = i === 0 ? t.ax : t.branch.stations[i-1].ax;
+    const fromY = i === 0 ? t.ay : t.branch.stations[i-1].ay;
+
+    // elbow: from→horizontal to s.ax→vertical to s.ay
+    g.appendChild(mkSvg('polyline', {
+      points: `${fromX},${fromY} ${s.ax},${fromY} ${s.ax},${s.ay}`,
+      stroke: col, 'stroke-width':'2', fill:'none',
+      'stroke-linecap':'round', 'stroke-linejoin':'round', opacity:'.75'
     }));
   });
+
   svg.appendChild(g);
   BG[t.id] = g;
+  // NOTE: NOT adding to expanded — starts closed
 });
 
 // ============================================================
 // DOM NODES
 // ============================================================
 const world = document.getElementById('world');
+// The SVG is already a child of world — nodes go beside it via absolute positioning
+// We'll wrap everything in a relative container
+const container = document.createElement('div');
+container.style.cssText = `position:relative;width:${SVG_W}px;height:${SVG_H}px;flex-shrink:0;`;
+world.appendChild(container);
+// move svg into container
+container.appendChild(svg);
 
+// Trunk nodes
 TRUNK.forEach(t => {
-  // Trunk node
-  const tn = document.createElement('div');
-  tn.className = 'tn' + (t.branch ? ' has-b' : '');
-  tn.id = 'n-' + t.id;
-  tn.style.left = t.ax + 'px';
-  tn.style.top  = t.ay + 'px';
+  const el = document.createElement('div');
+  el.className = 'tn open'; // open = branch expanded
+  el.id = 'n-' + t.id;
+  el.style.left = t.ax + 'px';
+  el.style.top  = t.ay + 'px';
 
   const ring = document.createElement('div'); ring.className = 'tn-ring';
   const dot  = document.createElement('div'); dot.className  = 'tn-dot';
   if (t.branch) dot.style.borderColor = C[t.branch.disc] + '88';
-  const lbl  = document.createElement('div'); lbl.className  = 'tn-lbl'; lbl.textContent = t.label;
-  const yr   = document.createElement('div'); yr.className   = 'tn-yr';  yr.textContent  = t.year;
 
-  tn.append(ring, dot, lbl, yr);
-  tn.addEventListener('click', e => {
+  const info = document.createElement('div'); info.className = 'tn-info';
+  const lbl  = document.createElement('div'); lbl.className = 'tn-lbl'; lbl.textContent = t.label;
+  const yr   = document.createElement('div'); yr.className  = 'tn-yr';  yr.textContent  = t.year;
+  info.append(lbl, yr);
+  el.append(ring, dot, info);
+
+  el.addEventListener('click', e => {
     e.stopPropagation();
-    if (t.branch) toggleBranch(t); else openPanel(t, null);
+    if (t.branch) toggleBranch(t);
+    else openPanel(t, null);
   });
-  world.appendChild(tn);
+  container.appendChild(el);
+});
 
-  // Branch nodes
-  if (t.branch) {
-    t.branch.stations.forEach(s => {
-      const col = C[t.branch.disc];
-      const bn = document.createElement('div');
-      bn.className = 'bn';
-      bn.id = 'n-' + s.id;
-      bn.style.left = s.ax + 'px';
-      bn.style.top  = s.ay + 'px';
+// Branch nodes (start HIDDEN, shown when branch expanded)
+TRUNK.forEach(t => {
+  if (!t.branch) return;
+  const col = C[t.branch.disc];
+  const isLeft = t.branch.dir === 'left';
 
-      if (s.status === 'in-progress') {
-        const p = document.createElement('div');
-        p.className = 'pulse';
-        p.style.color = col;
-        bn.appendChild(p);
-      }
+  t.branch.stations.forEach(s => {
+    const el = document.createElement('div');
+    el.className = 'bn'; // NOT vis — starts hidden
+    el.id = 'n-' + s.id;
+    el.style.left  = s.ax + 'px';
+    el.style.top   = s.ay + 'px';
+    el.style.color = col;
 
-      const d = document.createElement('div');
-      d.className = 'bn-dot';
-      if      (s.status === 'completed')   { d.style.background = col; }
-      else if (s.status === 'in-progress') { d.style.border = '2px solid '+col; d.style.background = 'transparent'; }
-      else                                  { d.style.border = '2px dashed #2e2e40'; d.style.background = 'transparent'; }
+    if (s.status === 'in-progress') {
+      const p = document.createElement('div');
+      p.className = 'pulse'; p.style.color = col;
+      el.appendChild(p);
+    }
 
-      const lb = document.createElement('div');
-      lb.className = 'bn-lbl';
-      lb.textContent = s.label;
+    const d = document.createElement('div'); d.className = 'bn-dot';
+    if      (s.status === 'completed')   { d.style.background = col; }
+    else if (s.status === 'in-progress') { d.style.border = '2.5px solid '+col; d.style.background = 'transparent'; }
+    else                                  { d.style.border = '2px dashed #4a4a60'; d.style.background = 'transparent'; }
 
-      bn.append(d, lb);
-      bn.addEventListener('click', e => { e.stopPropagation(); openPanel(s, t); });
-      world.appendChild(bn);
-    });
-  }
+    const lb = document.createElement('div');
+    lb.className = 'bn-lbl';
+    lb.textContent = s.label.replace(/\n/g, ' ');
+    // align label based on branch direction
+    lb.style.textAlign = isLeft ? 'right' : 'left';
+
+    el.addEventListener('mouseenter', () => d.style.boxShadow = `0 0 14px ${col}`);
+    el.addEventListener('mouseleave', () => d.style.boxShadow = '');
+
+    el.append(d, lb);
+    el.addEventListener('click', e => { e.stopPropagation(); openPanel(s, t); });
+    container.appendChild(el);
+  });
 });
 
 // ============================================================
-// EXPAND / COLLAPSE
+// BRANCH TOGGLE
 // ============================================================
-const expanded = new Set();
+function toggleBranch(t) {
+  expanded.has(t.id) ? collapseBranch(t) : expandBranch(t);
+}
 
 function expandBranch(t) {
   expanded.add(t.id);
-  const tn = document.getElementById('n-' + t.id);
-  tn.classList.add('open');
+  document.getElementById('n-'+t.id).classList.add('open');
   BG[t.id].style.opacity = '1';
   t.branch.stations.forEach((s, i) => {
     setTimeout(() => {
-      document.getElementById('n-' + s.id).classList.add('vis');
-    }, 50 + i * 75);
+      const el = document.getElementById('n-'+s.id);
+      if (el) el.classList.add('vis');
+    }, 40 + i * 70);
   });
 }
 
 function collapseBranch(t) {
   expanded.delete(t.id);
-  document.getElementById('n-' + t.id).classList.remove('open');
+  document.getElementById('n-'+t.id).classList.remove('open');
   BG[t.id].style.opacity = '0';
   t.branch.stations.forEach(s => {
-    document.getElementById('n-' + s.id).classList.remove('vis');
+    const el = document.getElementById('n-'+s.id);
+    if (el) el.classList.remove('vis');
   });
 }
 
-function toggleBranch(t) {
-  expanded.has(t.id) ? collapseBranch(t) : expandBranch(t);
+// ============================================================
+// ZOOM STATES
+// ============================================================
+function setZoom(state) {
+  document.getElementById('world').className = 'zoom-' + state;
 }
 
 // ============================================================
-// DETAIL PANEL
+// PANEL
 // ============================================================
 function openPanel(node, parentTrunk) {
+  setZoom('focus');
   const disc = parentTrunk ? parentTrunk.branch.disc : 'trunk';
   const col  = C[disc];
 
@@ -582,31 +690,26 @@ function openPanel(node, parentTrunk) {
 
   const st = node.status || 'completed';
   document.getElementById('pbdot').style.background = SC[st] || col;
-  document.getElementById('pbtext').textContent     = st.replace('-', ' ');
+  document.getElementById('pbtext').textContent     = st.replace('-',' ');
 
   const pl = document.getElementById('plearn');
   pl.innerHTML = '';
   const lrn = node.learned || [];
   if (lrn.length) {
-    lrn.forEach(l => {
-      const d = document.createElement('div');
-      d.className = 'li2'; d.textContent = l;
-      pl.appendChild(d);
-    });
+    lrn.forEach(l => { const d=document.createElement('div');d.className='li2';d.textContent=l;pl.appendChild(d); });
   } else {
-    pl.innerHTML = '<div style="font-size:10px;color:#1e1e2c;font-family:Syne Mono,monospace">-- not yet written --</div>';
+    pl.innerHTML='<div style="font-size:10px;color:#1e1e2c;font-family:Syne Mono,monospace">-- not yet written --</div>';
   }
 
   const pc = document.getElementById('pconn');
   pc.innerHTML = '';
-  (node.related || []).forEach(rid => {
+  (node.related||[]).forEach(rid => {
     const r = NM[rid]; if (!r) return;
     const chip = document.createElement('div');
     chip.className = 'cc';
     chip.textContent = (r.label||'').replace(/\n/g,' ');
     chip.onclick = () => {
       const pt = r._trunk || null;
-      if (pt && !expanded.has(pt.id)) expandBranch(pt);
       openPanel(r, pt);
     };
     pc.appendChild(chip);
@@ -618,6 +721,7 @@ function openPanel(node, parentTrunk) {
 
 function closePanel() {
   document.getElementById('panel').classList.remove('open');
+  setZoom('overview');
 }
 
 // ============================================================
@@ -627,133 +731,35 @@ let activeFilter = null;
 
 function doFilter(disc, btn) {
   if (activeFilter === disc) {
-    // Clear filter
     activeFilter = null;
-    document.querySelectorAll('.li').forEach(l => l.classList.add('on'));
+    document.querySelectorAll('.li-bl').forEach(l => l.classList.add('on'));
     TRUNK.forEach(t => {
       document.getElementById('n-'+t.id).style.opacity = '1';
       if (t.branch) {
-        BG[t.id].style.opacity = expanded.has(t.id) ? '1' : '0';
-        t.branch.stations.forEach(s => {
-          document.getElementById('n-'+s.id).style.opacity = '';
-        });
+        BG[t.id].style.opacity = '1';
+        t.branch.stations.forEach(s => { document.getElementById('n-'+s.id).style.opacity = ''; });
       }
     });
   } else {
     activeFilter = disc;
-    document.querySelectorAll('.li').forEach(l => l.classList.toggle('on', l.dataset.d === disc));
+    document.querySelectorAll('.li-bl').forEach(l => l.classList.toggle('on', l.dataset.d === disc));
     TRUNK.forEach(t => {
       const match = t.branch && t.branch.disc === disc;
       document.getElementById('n-'+t.id).style.opacity = match ? '1' : '0.1';
       if (t.branch) {
-        if (match) {
-          BG[t.id].style.opacity = '1';
-          if (!expanded.has(t.id)) expandBranch(t);
-          t.branch.stations.forEach(s => {
-            document.getElementById('n-'+s.id).style.opacity = '';
-          });
-        } else {
-          BG[t.id].style.opacity = '0';
-          t.branch.stations.forEach(s => {
-            document.getElementById('n-'+s.id).style.opacity = '0';
-          });
-        }
+        BG[t.id].style.opacity = match ? '1' : '0.04';
+        t.branch.stations.forEach(s => {
+          document.getElementById('n-'+s.id).style.opacity = match ? '' : '0.06';
+        });
       }
     });
   }
 }
 
-// ============================================================
-// PAN & ZOOM
-// ============================================================
-let vp   = { x:0, y:0, s:1 };
-let drag = { on:false, sx:0, sy:0 };
-const vpEl = document.getElementById('vp');
+// close panel on backdrop click
+document.getElementById('vp').addEventListener('click', () => closePanel());
 
-function applyVP() {
-  world.style.transform = 'translate('+vp.x+'px,'+vp.y+'px) scale('+vp.s+')';
-}
-
-function initVP() {
-  const vw = window.innerWidth, vh = window.innerHeight;
-  // Center the map horizontally; place trunk near vertical center
-  vp.x = (vw - 1100) / 2;
-  vp.y = (vh - 400) / 2 - TY * 0.5;
-  vp.s = 1;
-  applyVP();
-}
-window.addEventListener('load',   initVP);
-window.addEventListener('resize', initVP);
-
-vpEl.addEventListener('mousedown', e => {
-  if (e.button !== 0) return;
-  drag.on = true;
-  drag.sx = e.clientX - vp.x;
-  drag.sy = e.clientY - vp.y;
-  vpEl.classList.add('drag');
-});
-window.addEventListener('mousemove', e => {
-  if (!drag.on) return;
-  vp.x = e.clientX - drag.sx;
-  vp.y = e.clientY - drag.sy;
-  applyVP();
-});
-window.addEventListener('mouseup', () => {
-  drag.on = false;
-  vpEl.classList.remove('drag');
-});
-
-vpEl.addEventListener('wheel', e => {
-  e.preventDefault();
-  const factor = e.deltaY > 0 ? 0.92 : 1.09;
-  const r  = vpEl.getBoundingClientRect();
-  const mx = (e.clientX - r.left - vp.x) / vp.s;
-  const my = (e.clientY - r.top  - vp.y) / vp.s;
-  vp.s = Math.max(0.25, Math.min(3.5, vp.s * factor));
-  vp.x = e.clientX - r.left - mx * vp.s;
-  vp.y = e.clientY - r.top  - my * vp.s;
-  applyVP();
-}, { passive:false });
-
-function doZoom(f) {
-  vp.s = Math.max(0.25, Math.min(3.5, vp.s * f));
-  applyVP();
-}
-function resetVP() { initVP(); }
-
-// Touch
-let lastPD = null;
-vpEl.addEventListener('touchstart', e => {
-  if (e.touches.length === 1) {
-    drag.on = true;
-    drag.sx = e.touches[0].clientX - vp.x;
-    drag.sy = e.touches[0].clientY - vp.y;
-  }
-  if (e.touches.length === 2) {
-    lastPD = Math.hypot(
-      e.touches[0].clientX - e.touches[1].clientX,
-      e.touches[0].clientY - e.touches[1].clientY
-    );
-  }
-}, { passive:true });
-vpEl.addEventListener('touchmove', e => {
-  if (e.touches.length === 1 && drag.on) {
-    vp.x = e.touches[0].clientX - drag.sx;
-    vp.y = e.touches[0].clientY - drag.sy;
-    applyVP();
-  }
-  if (e.touches.length === 2) {
-    const d = Math.hypot(
-      e.touches[0].clientX - e.touches[1].clientX,
-      e.touches[0].clientY - e.touches[1].clientY
-    );
-    if (lastPD) { vp.s = Math.max(0.25, Math.min(3.5, vp.s * d / lastPD)); applyVP(); }
-    lastPD = d;
-  }
-}, { passive:true });
-vpEl.addEventListener('touchend', () => { drag.on = false; lastPD = null; });
-
-// Fade hint after 5s
+// fade hint
 setTimeout(() => document.getElementById('hint').classList.add('gone'), 5000);
 </script>
 </body>
