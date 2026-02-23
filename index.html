@@ -1,43 +1,35 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transit Map</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            text-align: center;
-        }
-        .station {
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            background-color: #007bff;
-            border-radius: 50%;
-            border: 2px solid white;
-            box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
-        }
-        .line {
-            position: absolute;
-            background-color: #333;
-            height: 2px;
-        }
-    </style>
-</head>
-<body>
+<script>
+// Updated script section
+// SVG circle markers to represent branch lines
+const svgNamespace = 'http://www.w3.org/2000/svg';
 
-<div class="station" style="top: 50px; left: 100px;"></div>
-<div class="station" style="top: 50px; left: 200px;"></div>
-<div class="station" style="top: 150px; left: 150px;"></div>
-<div class="station" style="top: 200px; left: 100px;"></div>
-<div class="station" style="top: 200px; left: 200px;"></div>
+function createCircle(x, y) {
+    const circle = document.createElementNS(svgNamespace, 'circle');
+    circle.setAttribute('cx', x);
+    circle.setAttribute('cy', y);
+    circle.setAttribute('r', '5');
+    circle.setAttribute('fill', 'blue'); // Change color as needed
+    return circle;
+}
 
-<div class="line" style="top: 60px; left: 110px; width: 90px;"></div>
-<div class="line" style="top: 60px; left: 210px; width: 90px;"></div>
-<div class="line" style="top: 160px; left: 110px; width: 40px;"></div>
-<div class="line" style="top: 210px; left: 110px; width: 90px;"></div>
+function drawLineWithNodes(startX, startY, endX, endY) {
+    const line = document.createElementNS(svgNamespace, 'line');
+    line.setAttribute('x1', startX);
+    line.setAttribute('y1', startY);
+    line.setAttribute('x2', endX);
+    line.setAttribute('y2', endY);
+    line.setAttribute('stroke', 'black'); // Line color
 
-</body>
-</html>
+    // Calculate mid-point for circle position
+    const midX = (startX + endX) / 2;
+    const midY = (startY + endY) / 2;
+
+    const circle = createCircle(midX, midY);
+    document.getElementById('svgContainer').appendChild(line);
+    document.getElementById('svgContainer').appendChild(circle);
+}
+
+// Call drawLineWithNodes with appropriate coordinates for each branch
+// Add your specific coordinates below: 
+// drawLineWithNodes(startX, startY, endX, endY);
+</script>
